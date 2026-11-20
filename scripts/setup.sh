@@ -9,6 +9,7 @@ if [[ ! -f .env ]]; then
     echo "MQTT_INGEST_PASSWORD=$(rand)"
     echo "POSTGRES_PASSWORD=$(rand)"
     echo "GRAFANA_ADMIN_PASSWORD=$(rand)"
+    echo "GRAFANA_DB_PASSWORD=$(rand)"
   } > .env
   chmod 600 .env
   echo "Created .env with random passwords"

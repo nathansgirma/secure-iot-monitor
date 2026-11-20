@@ -26,6 +26,7 @@ services:
       POSTGRES_USER: iot
       POSTGRES_DB: iot
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD:?set GRAFANA_DB_PASSWORD in .env}
     volumes:
       - ./db:/docker-entrypoint-initdb.d:ro,z
       - pgdata:/var/lib/postgresql/data
@@ -46,5 +47,23 @@ services:
     volumes:
       - ./certs/ca.crt:/certs/ca.crt:ro,z
 
+  grafana:
+    image: docker.io/grafana/grafana-oss:11.3.0
+    restart: unless-stopped
+    depends_on: [postgres]
+    ports:
+      - "127.0.0.1:3000:3000"  # only reachable from this laptop
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/sensors.json
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro,z
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro,z
+      - grafanadata:/var/lib/grafana
+
 volumes:
   pgdata:
+  grafanadata:
