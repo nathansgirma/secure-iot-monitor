@@ -16,10 +16,3 @@ packages = ["ingest"]
 
 [tool.pytest.ini_options]
 markers = ["integration: needs a PostgreSQL database (DATABASE_URL)"]
-
-[tool.ruff]
-line-length = 100
-target-version = "py312"
-
-[tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP"]

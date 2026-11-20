@@ -1,0 +1,6 @@
+# The ingest service may only read sensor readings.
+user ingest
+topic read sensors/+/readings
+
+# Each device may only write to its own topic. %u is the username = device id.
+pattern write sensors/%u/readings
