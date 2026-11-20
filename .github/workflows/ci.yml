@@ -60,6 +60,8 @@ jobs:
           scripts/setup.sh
           scripts/add_device.sh pico-sim | awk '{print $3}' > /tmp/sim-password
       - run: docker compose up -d --build
+      - name: Wait for the ingest service to subscribe
+        run: timeout 90 bash -c 'until docker compose logs ingest | grep -q subscribing; do sleep 1; done'
       - name: Publish 6 readings with the simulator
         run: timeout 60 python simulator/simulate.py --device pico-sim --password "$(cat /tmp/sim-password)" --count 6 --interval 1
       - run: simulator/e2e_check.sh 6

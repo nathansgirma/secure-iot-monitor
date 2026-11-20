@@ -2,6 +2,7 @@
 
 import logging
 import os
+import signal
 import ssl
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -74,7 +75,8 @@ def main() -> None:
 
     store = DbStore(lambda: connect_with_retry(database_url), insert_reading)
 
-    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="ingest")
+    # Persistent session: the broker keeps QoS 1 readings for us while we are offline.
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="ingest", clean_session=False)
     client.username_pw_set(os.environ.get("MQTT_USER", "ingest"), os.environ["MQTT_PASSWORD"])
     client.tls_set(ca_certs=os.environ["MQTT_CA_FILE"], tls_version=ssl.PROTOCOL_TLS_CLIENT)
     client.reconnect_delay_set(min_delay=1, max_delay=30)
@@ -91,6 +93,8 @@ def main() -> None:
 
     client.on_connect = on_connect
     client.on_message = on_message
+    # Stop cleanly when the container is stopped (python as PID 1 ignores SIGTERM otherwise).
+    signal.signal(signal.SIGTERM, lambda signum, frame: client.disconnect())
     client.connect_async(host, port)
     client.loop_forever(retry_first_connection=True)
 
