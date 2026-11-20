@@ -112,3 +112,16 @@ def test_impossible_date_rejected():
 
 def test_impossible_month_rejected():
     rejects(message(ts="2024-13-01T00:00:00Z"))
+
+
+def test_deeply_nested_json_rejected():
+    rejects(b"[" * 200000)
+
+
+def test_huge_integer_rejected():
+    rejects(message().replace(b"21.4", b"1" * 5000))
+
+
+def test_ingest_device_id_rejected():
+    # "ingest" is the service's own MQTT user, never a sensor
+    rejects(message(device_id="ingest"), topic="sensors/ingest/readings")

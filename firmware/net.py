@@ -1,5 +1,6 @@
 """Wi-Fi, clock and MQTT over TLS for the Pico W."""
 
+import gc
 import ssl
 import time
 
@@ -45,12 +46,21 @@ class _FixedHostnameTLS:
     def __init__(self, context, hostname):
         self._context = context
         self._hostname = hostname
+        self.raw_sock = None  # kept so we can set timeouts (see set_timeout)
 
     def wrap_socket(self, sock, server_hostname=None):
+        self.raw_sock = sock
         return self._context.wrap_socket(sock, server_hostname=self._hostname)
 
 
-def mqtt_connect(cfg):
+def set_timeout(client, seconds):
+    """umqtt switches the socket back to blocking after every read, so set a
+    timeout again before each publish. Otherwise a dead network blocks forever."""
+    client.ssl.raw_sock.settimeout(seconds)
+
+
+def mqtt_connect(cfg, timeout_s=10):
+    gc.collect()  # TLS needs large buffers; free memory first
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     context.verify_mode = ssl.CERT_REQUIRED
     with open("certs/ca.der", "rb") as f:
@@ -64,6 +74,6 @@ def mqtt_connect(cfg):
         keepalive=60,
         ssl=_FixedHostnameTLS(context, cfg.TLS_HOSTNAME),
     )
-    client.connect()
+    client.connect(timeout=timeout_s)
     print("mqtt connected to", cfg.BROKER_IP)
     return client

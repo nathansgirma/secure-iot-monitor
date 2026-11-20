@@ -9,6 +9,9 @@ TOPIC_RE = re.compile(r"^sensors/([^/]+)/readings$")
 DEVICE_ID_RE = re.compile(r"^[a-z0-9-]{1,32}$")
 TS_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z$")
 
+# MQTT usernames used by services, never by sensors.
+RESERVED_IDS = {"ingest"}
+
 OLDEST_TS = datetime(2024, 1, 1, tzinfo=UTC)
 MAX_CLOCK_AHEAD = timedelta(minutes=5)
 
@@ -41,8 +44,10 @@ def parse_reading(topic: str, payload: bytes, now: datetime) -> Reading:
 
     try:
         data = json.loads(payload.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise InvalidReading(f"payload is not UTF-8 JSON: {exc}") from None
+    except (UnicodeDecodeError, ValueError, RecursionError) as exc:
+        # ValueError covers bad JSON and integers too long to convert;
+        # RecursionError covers absurdly deep nesting.
+        raise InvalidReading(f"payload is not valid UTF-8 JSON: {type(exc).__name__}") from None
     if not isinstance(data, dict):
         raise InvalidReading("payload is not a JSON object")
 
@@ -53,6 +58,8 @@ def parse_reading(topic: str, payload: bytes, now: datetime) -> Reading:
     device_id = data["device_id"]
     if not isinstance(device_id, str) or not DEVICE_ID_RE.match(device_id):
         raise InvalidReading(f"bad device_id {device_id!r}")
+    if device_id in RESERVED_IDS:
+        raise InvalidReading(f"device_id {device_id!r} is reserved for a service")
     if device_id != topic_device:
         raise InvalidReading(f"device_id {device_id!r} does not match topic {topic_device!r}")
 

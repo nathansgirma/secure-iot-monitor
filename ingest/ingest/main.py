@@ -30,6 +30,10 @@ def handle_message(
     except InvalidReading as exc:
         log.warning("rejected message on %s: %s", topic, exc)
         return "rejected"
+    except Exception:
+        # Same last line of defence as for storing (see below).
+        log.exception("unexpected error parsing message on %s", topic)
+        return "rejected"
     try:
         inserted = store(reading)
     except psycopg.Error as exc:

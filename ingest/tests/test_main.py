@@ -102,3 +102,15 @@ def test_unexpected_error_does_not_crash(caplog):
     with caplog.at_level(logging.ERROR):
         assert handle_message(TOPIC, GOOD, buggy_store, now) == "rejected"
     assert "unexpected" in caplog.text
+
+
+def test_parse_crash_does_not_escape(monkeypatch, caplog):
+    import ingest.main as main_module
+
+    def exploding_parse(topic, payload, now):
+        raise RecursionError("boom")
+
+    monkeypatch.setattr(main_module, "parse_reading", exploding_parse)
+    with caplog.at_level(logging.ERROR):
+        assert handle_message(TOPIC, GOOD, lambda r: True, now) == "rejected"
+    assert "boom" in caplog.text

@@ -50,20 +50,21 @@ def run():
                     raise OSError("wifi not available")
                 client = net.mqtt_connect(config)
                 backoff_s = 5
-            except OSError as exc:
+            except Exception as exc:  # OSError, MQTTException (bad password), MemoryError...
                 print("connect failed, retry in", backoff_s, "s:", exc)
                 next_try = time.ticks_add(now, backoff_s * 1000)
                 backoff_s = min(backoff_s * 2, 60)
 
         while client is not None and len(buf):
             try:
+                net.set_timeout(client, 10)
                 client.publish(TOPIC, json.dumps(buf.peek()), qos=1)
                 buf.pop()
-            except OSError as exc:
+            except Exception as exc:  # timeout, lost Wi-Fi, broken reply from the broker
                 print("send failed, keeping", len(buf), "readings:", exc)
                 try:
                     client.disconnect()
-                except OSError:
+                except Exception:
                     pass
                 client = None
                 next_try = time.ticks_ms()
