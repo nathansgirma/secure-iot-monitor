@@ -10,7 +10,11 @@ if [[ ! "$user" =~ ^[a-z0-9-]{1,32}$ ]]; then
 fi
 password="${MQTT_NEW_PASSWORD:-$(openssl rand -base64 18 | tr -d '/+=')}"
 touch broker/passwd
-podman run --rm -v "$PWD/broker:/work:Z" docker.io/library/eclipse-mosquitto:2 \
+runtime="${CONTAINER_RUNTIME:-$(command -v podman || command -v docker)}"
+user_opt=()
+# Docker runs containers as root; keep the file owned by us. (Rootless Podman already does.)
+[[ "$(basename "$runtime")" == docker ]] && user_opt=(--user "$(id -u):$(id -g)")
+"$runtime" run --rm "${user_opt[@]}" -v "$PWD/broker:/work:z" docker.io/library/eclipse-mosquitto:2 \
   mosquitto_passwd -b /work/passwd "$user" "$password"
 chmod 644 broker/passwd
 echo "$user password: $password"
