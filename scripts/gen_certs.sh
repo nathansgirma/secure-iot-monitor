@@ -25,7 +25,8 @@ EXT
 openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial \
   -days 825 -out server.crt -extfile server.ext
 
+openssl x509 -in ca.crt -outform DER -out ca.der  # the Pico loads the CA in DER format
 rm -f server.csr server.ext ca.srl
 chmod 600 ca.key
 chmod 644 server.key   # read by the broker container user
-echo "Created certs/ca.crt, certs/server.crt and certs/server.key"
+echo "Created certs/ca.crt (+ ca.der for the Pico), certs/server.crt and certs/server.key"

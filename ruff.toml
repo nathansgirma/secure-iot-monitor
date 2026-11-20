@@ -1,8 +1,9 @@
 line-length = 100
 target-version = "py312"
+extend-exclude = ["firmware/lib"]  # third-party driver, kept as published
 
 [lint]
 select = ["E", "F", "W", "I", "B", "UP"]
 
 [lint.isort]
-known-first-party = ["ingest", "simulate", "buffer"]
+known-first-party = ["ingest", "simulate", "buffer", "message"]
