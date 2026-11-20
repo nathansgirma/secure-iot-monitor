@@ -1,0 +1,71 @@
+# Run with: podman compose up -d   (or: docker compose up -d)
+# First run scripts/setup.sh to create .env, certificates and the ingest MQTT user.
+
+services:
+  mosquitto:
+    image: docker.io/library/eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "8883:8883"            # the only port reachable from the network
+    volumes:
+      - ./broker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro,z
+      - ./broker/acl:/mosquitto/config/acl:ro,z
+      - ./broker/passwd:/mosquitto/config/passwd:ro,z
+      - ./certs/ca.crt:/mosquitto/certs/ca.crt:ro,z
+      - ./certs/server.crt:/mosquitto/certs/server.crt:ro,z
+      - ./certs/server.key:/mosquitto/certs/server.key:ro,z
+    networks:
+      default:
+        aliases:
+          - iot-monitor.local  # matches the name in the server certificate
+
+  postgres:
+    image: docker.io/library/postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: iot
+      POSTGRES_DB: iot
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD:?set GRAFANA_DB_PASSWORD in .env}
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d:ro,z
+      - pgdata:/var/lib/postgresql/data
+    # no ports: the database is only reachable inside the compose network
+
+  ingest:
+    build:
+      context: ./ingest
+      dockerfile: Containerfile
+    image: localhost/secure-iot-monitor-ingest
+    restart: unless-stopped
+    depends_on: [mosquitto, postgres]
+    environment:
+      MQTT_HOST: iot-monitor.local
+      MQTT_PORT: "8883"
+      MQTT_USER: ingest
+      MQTT_PASSWORD: ${MQTT_INGEST_PASSWORD:?set MQTT_INGEST_PASSWORD in .env}
+      MQTT_CA_FILE: /certs/ca.crt
+      DATABASE_URL: postgresql://iot:${POSTGRES_PASSWORD}@postgres:5432/iot
+    volumes:
+      - ./certs/ca.crt:/certs/ca.crt:ro,z
+
+  grafana:
+    image: docker.io/grafana/grafana-oss:11.3.0
+    restart: unless-stopped
+    depends_on: [postgres]
+    ports:
+      - "127.0.0.1:3000:3000"  # only reachable from this laptop
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/sensors.json
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro,z
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro,z
+      - grafanadata:/var/lib/grafana
+
+volumes:
+  pgdata:
+  grafanadata:

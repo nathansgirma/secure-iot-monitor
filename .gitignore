@@ -1,0 +1,15 @@
+# secrets
+.env
+certs/
+broker/passwd
+firmware/config.py
+firmware/certs/
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+# agent scratch
+.superpowers/
