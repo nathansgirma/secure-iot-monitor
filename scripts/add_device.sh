@@ -15,6 +15,6 @@ user_opt=()
 # Docker runs containers as root; keep the file owned by us. (Rootless Podman already does.)
 [[ "$(basename "$runtime")" == docker ]] && user_opt=(--user "$(id -u):$(id -g)")
 "$runtime" run --rm "${user_opt[@]}" -v "$PWD/broker:/work:z" docker.io/library/eclipse-mosquitto:2 \
-  mosquitto_passwd -b /work/passwd "$user" "$password"
+  mosquitto_passwd -b /work/passwd "$user" "$password" >&2
 chmod 644 broker/passwd
 echo "$user password: $password"
