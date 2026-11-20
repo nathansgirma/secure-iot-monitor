@@ -77,4 +77,7 @@ def parse_reading(topic: str, payload: bytes, now: datetime) -> Reading:
 def _parse_ts(value) -> datetime:
     if not isinstance(value, str) or not TS_RE.match(value):
         raise InvalidReading(f"ts must be ISO 8601 UTC ending in Z, got {value!r}")
-    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:  # right shape but impossible date, e.g. 30 February
+        raise InvalidReading(f"ts {value!r} is not a real date: {exc}") from None

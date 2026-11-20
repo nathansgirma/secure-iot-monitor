@@ -104,3 +104,11 @@ def test_humidity_out_of_range_rejected():
 
 def test_pressure_out_of_range_rejected():
     rejects(message(pressure_hpa=1100.1))
+
+
+def test_impossible_date_rejected():
+    rejects(message(ts="2024-02-30T00:00:00Z"))
+
+
+def test_impossible_month_rejected():
+    rejects(message(ts="2024-13-01T00:00:00Z"))

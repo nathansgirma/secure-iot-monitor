@@ -88,3 +88,17 @@ def test_db_store_reconnects_after_error():
     assert store("reading-2") is True
     assert len(made) == 2
     assert conns[0].closed
+
+
+def test_impossible_date_rejected_no_exception():
+    payload = GOOD.replace(b"2026-12-20T14:05:00Z", b"2024-02-30T00:00:00Z")
+    assert handle_message(TOPIC, payload, lambda r: True, now) == "rejected"
+
+
+def test_unexpected_error_does_not_crash(caplog):
+    def buggy_store(reading):
+        raise RuntimeError("unexpected")
+
+    with caplog.at_level(logging.ERROR):
+        assert handle_message(TOPIC, GOOD, buggy_store, now) == "rejected"
+    assert "unexpected" in caplog.text

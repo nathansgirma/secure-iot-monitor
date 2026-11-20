@@ -35,6 +35,11 @@ def handle_message(
     except psycopg.Error as exc:
         log.error("could not store reading from %s: %s", reading.device_id, exc)
         return "rejected"
+    except Exception:
+        # Last line of defence: an exception here would stop the MQTT loop,
+        # and the unacknowledged message would crash the service again on restart.
+        log.exception("unexpected error storing reading from %s", reading.device_id)
+        return "rejected"
     if not inserted:
         log.info("duplicate reading from %s at %s", reading.device_id, reading.ts.isoformat())
         return "duplicate"
